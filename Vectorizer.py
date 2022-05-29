@@ -73,15 +73,16 @@ class Word2vecVectoriser(object):
                    vectors.append(self.model.wv[self.model.wv.get_index(token)])
 
            if self.sent_embed:
-               out_vector = np.mean(vectors)
+               out_vector = np.mean(vectors, axis=0)
            else:
                out_vector = vectors
         else:
             indicies = [self.model.wv.get_index(word) for word in words]
             vectors = self.model.wv[indicies]
             if self.sent_embed:
-                frequency = [self.input_vocab.lookup_frequency(word) for word in words]
-                out_vector = sum([vec*freq for vec,freq in zip(vectors, frequency)])
+                out_vector = np.mean(vectors, axis=0)
+                # frequency = [self.input_vocab.lookup_frequency(word) for word in words]
+                # out_vector = sum([vec*freq for vec,freq in zip(vectors, frequency)])
             else:
                 out_vector = vectors.flatten()
 
@@ -289,15 +290,19 @@ class PretrainedVectoriser(object):
     def get_vectoriser(self):
         return self.vectoriser
 
+    @property
+    def num_features(self):
+        return 300
+
     def vectorise_single_word(self, word):
         try:
             return np.array(self.vectoriser.get_vector(word))
         except KeyError:
             return np.zeros((300,))
 
-    def vectorise(self, words, vector_length=-1):
-        if self.sent_embed:
-            assert vector_length == 300, "Using sentence embedding with pretrained requies dim of 300"
+    def vectorize(self, words, vector_length=-1):
+        # if self.sent_embed:
+        #     assert vector_length == 300, "Using sentence embedding with pretrained requies dim of 300"
         if self.is_sequence:
             # sequence so add <begin> and <end> tokens
             pass
@@ -305,7 +310,7 @@ class PretrainedVectoriser(object):
         if self.sent_embed:
             # Take the mean of all individual word vectors
             result = np.mean(np.array([self.vectorise_single_word(word) for word in words]), axis=0)
-            assert result.shape[0] == vector_length
+            # assert result.shape[0] == vector_length
             return result
         else:
             return np.array([self.vectorise_single_word(word) for word in words])
