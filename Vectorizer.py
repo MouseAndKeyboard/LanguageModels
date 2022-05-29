@@ -1,8 +1,10 @@
 from Vocabulary import *
 from collections import Counter
 import string
-import numpy as np
 
+import gensim
+import gensim.downloader as api
+import numpy as np
 
 class Word2vecVectoriser(object):
     """ The Vectorizer which coordinates the Vocabularies and puts them to use"""
@@ -237,23 +239,53 @@ class OneHotVectoriser(object):
                 'is_sueqnce': self.is_sequence} 
 
 class PretrainedVectoriser(object):
-    def __init__(self, sent_embed=False, path=None):
+    def __init__(self, input_vocab, class_vocab, is_sequence, sent_embed, path=None):
         self.vectoriser = self.create_pretrained(load_path=path)
         self.sent_embed = sent_embed
-    
+        self.is_sequence = is_sequence
+
+        self.class_vocab = class_vocab
+        self.input_vocab = Vocabulary(add_unk=True)
+
+        # we know the input vocabulary ahead of time
+        for key in self.vectoriser.key_to_index:
+            self.input_vocab.add_token(key)
+
     def create_pretrained(self, load_path=None):
         if not load_path:
             pretrained_w2v = api.load('word2vec-google-news-300')
             return pretrained_w2v
         else:
             return gensim.models.KeyedVectors.load(load_path)
-         
-    def get_vectoriser(self):
-        return self.vecotoriser
 
-    def vectorise(self, words):
-        indicies = [self.vecotoriser.get_index(word) for word in words]
-        vectors = self.vectoriser[indicies]
+    @classmethod
+    def from_dataframe(cls, df, is_sequence, data_field="tfidf10", feature_field="is_fulltime", sent_embed=False, cutoff=25):
+        class_vocab = Vocabulary(add_unk=False)
+        for category in sorted(set(df[feature_field])):
+            class_vocab.add_token(category)
+
+        return cls(None, class_vocab, is_sequence, sent_embed)
+
+    def get_vectoriser(self):
+        return self.vectoriser
+
+    def vectorise_single_word(self, word):
+        try:
+            return np.array(self.vectoriser.get_vector(word))
+        except KeyError:
+            return np.zeros((300,))
+
+    def vectorise(self, words, vector_length=-1):
         if self.sent_embed:
-            return vectors.flatten()
-        return vectors 
+            assert vector_length == 300, "Using sentence embedding with pretrained requies dim of 300"
+        if self.is_sequence:
+            # sequence so add <begin> and <end> tokens
+            pass
+
+        if self.sent_embed:
+            # Take the mean of all individual word vectors
+            result = np.mean(np.array([self.vectorise_single_word(word) for word in words]), axis=0)
+            assert result.shape[0] == vector_length
+            return result
+        else:
+            return np.array([self.vectorise_single_word(word) for word in words])
