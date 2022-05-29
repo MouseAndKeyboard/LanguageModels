@@ -168,10 +168,13 @@ class OneHotVectoriser(object):
         Returns:
             one_hot (np.ndarray): the collapsed onehot encoding
         """
+        vec_len = 0
         if self.is_sequence:
             indicies = [self.input_vocab.begin_seq_index]
             indicies.extend(self.input_vocab.lookup_token(token) for token in words)
             indicies.append(self.input_vocab.end_seq_index)
+
+            vec_len = len(indicies) + 2
 
             if self.sent_embed:
                 if vector_length < 0:
@@ -181,11 +184,17 @@ class OneHotVectoriser(object):
                 out_vector[:len(indicies)] = indicies
                 out_vector[len(indicies):] = self.input_vocab.mask_index
             else:
-               out_vector = [] 
-               for index in indicies:
-                   word_vector = np.zeros(len(self.input_vocab), dtype=np.int8)
-                   word_vector[index] += 1
-                   out_vector.append(word_vector)
+                def get_mask():
+                    z = np.zeros(len(self.input_vocab), dtype=np.int8)
+                    z[self.input_vocab.mask_index] = 1
+                    return z
+
+                out_vector = np.array([get_mask()]*vector_length)
+                for i, index in enumerate(indicies):
+                    word_vector = np.zeros(len(self.input_vocab), dtype=np.int8)
+                    word_vector[index] += 1
+                    out_vector[i] = word_vector
+
         else:
             if self.sent_embed:
                 out_vector = np.zeros(len(self.input_vocab), dtype=np.float32)
@@ -198,7 +207,7 @@ class OneHotVectoriser(object):
                    word_vector[self.input_vocab.lookup_token(token)] += 1
                    out_vector.append(word_vector)
 
-        return np.array(out_vector)
+        return np.array(out_vector), vec_len
 
     @classmethod
     def from_dataframe(cls, df, is_sequence, data_field="tfidf10", feature_field="is_fulltime", sent_embed=False, cutoff=25):

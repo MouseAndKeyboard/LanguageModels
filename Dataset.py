@@ -24,10 +24,10 @@ class JobDescriptionDataset(Dataset):
         self._max_seq_length = max(map(measure_len, df[self.data_field])) + 2
 
         # if we don't have constant length 
-        if not all(len(val) == self._max_seq_length for val in self.data_field):
+        if not all(len(value) == self._max_seq_length for value in self.data_field):
             self.vector_len = self._max_seq_length
         else:
-            self.vector_len = -1
+            self.vector_len = self._max_seq_length
         
         self.train = train
         self.val = val
@@ -125,12 +125,13 @@ class JobDescriptionDataset(Dataset):
         a dict of the data point's features (x_data) and label (y_target)
         """
         row = self._target_df.iloc[index]
-        input_vector = \
+        input_vector, vec_length = \
             self._vectorizer.vectorize(row[self.data_field], vector_length=self.vector_len)
         class_index = \
             self._vectorizer.class_vocab.lookup_token(row[self.feature_field])
         return {'x_data': input_vector,
-                'y_target': class_index}
+                'y_target': class_index,
+                'x_length': vec_length}
 
     def get_num_batches(self, batch_size):
         """Given a batch size, return the number of batches in the dataset
