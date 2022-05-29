@@ -1,3 +1,7 @@
+
+import torch
+from torch.utils.data import Dataset, DataLoader
+
 class JobDescriptionDataset(Dataset):
     def __init__(self, df, train, val, test, vectorizer, data_field="tfidf10", feature_field="is_fulltime"):
         """
@@ -41,11 +45,11 @@ class JobDescriptionDataset(Dataset):
             torch.tensor(frequencies, dtype=torch.float32)
 
     @classmethod
-    def load_dataset_and_make_vectorizer(cls, name, vectoriser=OneHotVectoriser, 
-                                         data_field='tfidf10', 
-                                         feature_field='is_fulltime',
-                                         is_sequence=False,
-                                         sent_embed=False,
+    def load_dataset_and_make_vectorizer(cls, name, vectoriser, 
+                                         data_field, 
+                                         feature_field,
+                                         is_sequence,
+                                         sent_embed,
                                          cutoff=25):
         """Load dataset and make a new vectorizer from scratch
         Args:
