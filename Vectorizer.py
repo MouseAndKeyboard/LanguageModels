@@ -317,9 +317,18 @@ class PretrainedVectoriser(object):
             pass
 
         if self.sent_embed:
+
             # Take the mean of all individual word vectors
             result = np.mean(np.array([self.vectorise_single_word(word) for word in words]), axis=0)
             # assert result.shape[0] == vector_length
             return result, len(result)
         else:
-            return np.array([self.vectorise_single_word(word) for word in words]).astype(np.float32), len(words)
+
+            def get_mask():
+                z = np.zeros(300, dtype=np.int8)
+                return z
+
+            out_vector = np.array([np.zeros(300, dtype=np.int8) for _ in range(vector_length)]).astype(np.float32)
+            out_vector[:len(words)] = np.array([self.vectorise_single_word(word) for word in words]).astype(np.float32)
+
+            return out_vector, len(words)
