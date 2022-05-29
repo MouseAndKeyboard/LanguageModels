@@ -1,6 +1,11 @@
 
 import torch
 from torch.utils.data import Dataset, DataLoader
+from dataloading import *
+from Vocabulary import *
+import numpy as np
+
+
 
 class JobDescriptionDataset(Dataset):
     def __init__(self, df, train, val, test, vectorizer, data_field="tfidf10", feature_field="is_fulltime"):

@@ -1,3 +1,9 @@
+from Vocabulary import *
+from collections import Counter
+import string
+import numpy as np
+
+
 class Word2vecVectoriser(object):
     """ The Vectorizer which coordinates the Vocabularies and puts them to use"""
     def __init__(self, df, input_vocab, class_vocab, sent_embed, is_sequence, data_field, vector_len=-1, load_path=None):
