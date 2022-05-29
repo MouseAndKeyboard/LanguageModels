@@ -13,12 +13,15 @@ def pythonise( df):
 def load_data( name, send_computer_to_hell=True):
     nrows = None
     if not send_computer_to_hell:
-        nrows = 1000
+        nrows = 500
+
     df = pd.read_csv(f'./data/{name}.csv', nrows=nrows)
     train = pd.read_csv(f'./data/{name}-train.csv', nrows=nrows)
     test = pd.read_csv(f'./data/{name}-test.csv', nrows=nrows)
     val = pd.read_csv(f'./data/{name}-val.csv', nrows=nrows)
+    
     # ugly af
     for d in [df, train, test, val]:
         pythonise(d)
+
     return df, train, test, val
