@@ -1,10 +1,13 @@
 from Vocabulary import *
 from collections import Counter
 import string
-
+import numpy as np
 import gensim
 import gensim.downloader as api
-import numpy as np
+from time import time
+from gensim.models import Word2Vec
+
+
 
 class Word2vecVectoriser(object):
     """ The Vectorizer which coordinates the Vocabularies and puts them to use"""
@@ -21,13 +24,15 @@ class Word2vecVectoriser(object):
         self.is_sequence = is_sequence
         self.sent_embed = sent_embed 
         self.vector_len = vector_len
+        self.load_path = load_path
         if not load_path:
             self.model = self.model_base()
             self.build_vocab()
             self.train_model()
         else:
             self.model = gensim.models.KeyedVectors.load(load_path)
-        
+
+
     def model_base(self):
         cores = 4
         model = Word2Vec(min_count=1,
@@ -50,7 +55,7 @@ class Word2vecVectoriser(object):
         self.model.train(self.data, total_examples=self.model.corpus_count, epochs=50, report_delay=1)
         print('Time to train : {} mins'.format(round((time() - t) / 60, 2)))
         
-    def vectorize(self, words):
+    def vectorize(self, words, vector_length=-1):
         """Create a collapsed one hot vector for the review
         Args:
             review (str): the review
@@ -58,14 +63,29 @@ class Word2vecVectoriser(object):
             one_hot (np.ndarray): the collapsed onehot encoding
         """
 
-        indicies = [self.model.wv.get_index(word) for word in words]
-        vectors = self.model.wv[indicies]
+        if self.is_sequence:
+           vectors = []
+           for token in words:
+               index = self.input_vocab.lookup_token(token)
+               if index == self.input_vocab.unk_index:
+                   vectors.append(np.zeros(self.model.vector_size))
+               else:
+                   vectors.append(self.model.wv[self.model.wv.get_index(token)])
 
-        if self.sent_embed:
-            frequency = [self.input_vocab.lookup_frequency(word) for word in words]
-            return sum([vec*freq for vec,freq in zip(vectors, frequency)])
+           if self.sent_embed:
+               out_vector = np.mean(vectors)
+           else:
+               out_vector = vectors
+        else:
+            indicies = [self.model.wv.get_index(word) for word in words]
+            vectors = self.model.wv[indicies]
+            if self.sent_embed:
+                frequency = [self.input_vocab.lookup_frequency(word) for word in words]
+                out_vector = sum([vec*freq for vec,freq in zip(vectors, frequency)])
+            else:
+                out_vector = vectors.flatten()
 
-        return vectors.flatten()
+        return np.array(out_vector)
               
     @classmethod
     def from_dataframe(cls, df, is_sequence, data_field="tfidf10", feature_field="is_fulltime", sent_embed=False, cutoff=25):
@@ -95,7 +115,7 @@ class Word2vecVectoriser(object):
             if count > cutoff:
                 input_vocab.add_token(word, count)
 
-        return cls(input_vocab, class_vocab, sent_embed, is_sequence)
+        return cls(df, input_vocab, class_vocab, sent_embed, is_sequence, data_field)
 
     @property
     def num_features(self):
@@ -148,20 +168,20 @@ class OneHotVectoriser(object):
             one_hot (np.ndarray): the collapsed onehot encoding
         """
         if self.is_sequence:
-            indices = [self.input_vocab.begin_seq_index]
-            indices.extend(self.input_vocab.lookup_token(token) for token in words)
-            indices.append(self.input_vocab.end_seq_index)
+            indicies = [self.input_vocab.begin_seq_index]
+            indicies.extend(self.input_vocab.lookup_token(token) for token in words)
+            indicies.append(self.input_vocab.end_seq_index)
 
             if self.sent_embed:
                 if vector_length < 0:
-                    vector_length = len(indices)
+                    vector_length = len(indicies)
 
                 out_vector = np.zeros(vector_length, dtype=np.int64)
-                out_vector[:len(indices)] = indices
-                out_vector[len(indices):] = self.input_vocab.mask_index
+                out_vector[:len(indicies)] = indicies
+                out_vector[len(indicies):] = self.input_vocab.mask_index
             else:
                out_vector = [] 
-               for index in indices:
+               for index in indicies:
                    word_vector = np.zeros(len(self.input_vocab), dtype=np.int8)
                    word_vector[index] += 1
                    out_vector.append(word_vector)
