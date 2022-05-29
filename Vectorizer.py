@@ -86,7 +86,7 @@ class Word2vecVectoriser(object):
             else:
                 out_vector = vectors.flatten()
 
-        return np.array(out_vector)
+        return np.array(out_vector).astype(np.float32), len(out_vector)
               
     @classmethod
     def from_dataframe(cls, df, is_sequence, data_field="tfidf10", feature_field="is_fulltime", sent_embed=False, cutoff=25):
@@ -320,6 +320,6 @@ class PretrainedVectoriser(object):
             # Take the mean of all individual word vectors
             result = np.mean(np.array([self.vectorise_single_word(word) for word in words]), axis=0)
             # assert result.shape[0] == vector_length
-            return result
+            return result, len(result)
         else:
-            return np.array([self.vectorise_single_word(word) for word in words])
+            return np.array([self.vectorise_single_word(word) for word in words]).astype(np.float32), len(words)
